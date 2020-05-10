@@ -7,6 +7,7 @@ import requests
 import pandas as pd
 import json
 
+
 #Obtener api_key encriptada
 api_key = json.load(open('api_key.json'))
 
@@ -19,15 +20,25 @@ api_instance = swagger_client.ValoresClimatologicosApi(swagger_client.ApiClient(
 
 #Estaciones y años en el estudio
 idema_estaciones = ["3195","5783"]
-desc_estaciones = ["Madrid","Sevilla"]
-desc_estaciones_aux = []
+desc_estaciones = ["MADRID","SEVILLA"]
 rango_años = range(2008,2019)
 
-for i in range(len(idema_estaciones)):
-    for j in range(120):
-        desc_estaciones_aux.append(desc_estaciones[i])
-print(desc_estaciones_aux)
+# FUNCIONES SECUNDARIAS
+# Obtener lista desc_estaciones
+def getDescEstaciones(posicion):
+    lista_desc_estaciones = []
+    for i in range(12):
+        lista_desc_estaciones.append(desc_estaciones[posicion])
+    return(lista_desc_estaciones)
 
+# Obtener lista idema_estaciones
+def getIdemaEstaciones(posicion ):
+    lista_idema_estaciones = []
+    for i in range(12):
+        lista_idema_estaciones.append(idema_estaciones[posicion])
+    return (lista_idema_estaciones)
+
+# PROGRAMA PRINCIPAL
 for i in range(len(idema_estaciones)):
     for anio_actual in rango_años:
         anio_ini_str = str(anio_actual) # str | Año Inicial (AAAA)
@@ -36,12 +47,11 @@ for i in range(len(idema_estaciones)):
 
         try:
             # Climatologías mensuales anuales.
-            api_response = api_instance.climatologas_mensuales_anuales_(anio_ini_str, anio_fin_str, idema)
-            # pprint(api_response)
+            api_response_clima = api_instance.climatologas_mensuales_anuales_(anio_ini_str, anio_fin_str, idema)
         except ApiException as e:
             print("Exception when calling ValoresClimatologicosApi->climatologas_mensuales_anuales_: %s\n" % e)
 
-        r = requests.get(api_response.datos)
+        r = requests.get(api_response_clima.datos)
         data = r.json()
         if anio_actual == 2008 and i == 0:
             registros = pd.DataFrame(data)
@@ -51,7 +61,9 @@ for i in range(len(idema_estaciones)):
                  'np_001', 'ta_min', 'e', 'np_300', 'nv_1000', 'evap', 'n_llu', 'n_tor', 'w_med', 'nt_00', 'ti_max',
                  'n_nie', 'tm_max', 'nv_0100', 'q_min', 'np_010', 'w_rec', 'ts_20', 'ts_10', 'ts_50'
                  ], axis=1, errors='ignore') #ignoramos errores porque hay columnas que no están presentes en todos los años
-            registros.drop(12) #eliminamos fila 13 porque contiene el total anual
+            registros.drop(12, inplace=True)# eliminamos fila 13 porque contiene el total anual
+            registros['idema']= getIdemaEstaciones(i) # añadimos columna provincia
+            registros['provincia']= getDescEstaciones(i) # añadimos columna provincia
         else:
             nuevos_registros = pd.DataFrame(data)
             nuevos_registros = nuevos_registros.drop(
@@ -59,12 +71,13 @@ for i in range(len(idema_estaciones)):
                  'tm_min', 'ta_max', 'ts_min', 'nt_30', 'nv_0050', 'n_des', 'w_racha', 'np_100', 'n_nub', 'p_sol', 'nw_91',
                  'np_001', 'ta_min', 'e', 'np_300', 'nv_1000', 'evap', 'n_llu', 'n_tor', 'w_med', 'nt_00', 'ti_max',
                  'n_nie', 'tm_max', 'nv_0100', 'q_min', 'np_010', 'w_rec', 'ts_20', 'ts_10', 'ts_50'
-                 ], axis=1, errors='ignore') #ignoramos errores porque hay columnas que no están presentes en todos los años
-            nuevos_registros.drop(12) # eliminamos fila 13 porque contiene el total anual
+                 ], axis=1, errors='ignore'
+                                   '') #ignoramos errores porque hay columnas que no están presentes en todos los años
+            nuevos_registros.drop(12, inplace=True)# eliminamos fila 13 porque contiene el total anual
+            nuevos_registros['idema'] = getIdemaEstaciones(i)
+            nuevos_registros['provincia'] = getDescEstaciones(i)
             registros = pd.concat([registros, nuevos_registros], ignore_index=True)
-
-registros['desc_estaciones'] = desc_estaciones_aux
-
-# print(registros)
-print(len(registros))
-registros.to_csv('pruebaClimatologicasMensuales.csv')
+# Ordenamos columnas
+registros = registros[['fecha','idema','provincia','p_mes','tm_mes']]
+print(registros)
+registros.to_csv('pruebaClimatologicasMensuales.csv', sep=";")
