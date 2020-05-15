@@ -3,7 +3,7 @@ import requests
 import time
 import json
 import pandas as pd
-
+import csv
 #Codigo para evitar ssl error: dh key too small
 requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'
 try:
@@ -16,8 +16,8 @@ except AttributeError:
 api_key = json.load(open('api_key.json'))
 
 API_TOKEN = api_key['api_key']
-tooManyRequestError = 429
 
+tooManyRequestError = 429
 class TooManyRequestException(Exception):
     pass
 
@@ -35,7 +35,6 @@ def getDatos (anio, idema):
         raise TooManyRequestException()
     finalDataUrlMeteo = openDataResponseMeteo["datos"]
     finalDataResponseMeteo = requests.get(finalDataUrlMeteo)
-    print(finalDataResponseMeteo)
     finalDataMeteo = finalDataResponseMeteo.json()
     registrosMeteo = pd.DataFrame(finalDataMeteo)
     registrosMeteo.drop(
@@ -64,8 +63,13 @@ def getDatos (anio, idema):
 
 #PROGRAMA PRINCIPAL
 datos = pd.DataFrame()
-#Estaciones y años en el estudio
-idema_estaciones = ["3195","5783","6156X","5973"]
+#Estaciones (una por provincia)
+idema_estaciones = ["1387","8178D","8025","6325O","9091R","1249I","4452","0076","1082",
+                    "2331","3469A","5960","1111","8500A","4121","5402","1024E","0367",
+                    "5530E","4642E","9898","B278","5270B","9170","C649I","2661",
+                    "9771C","1505","3195","6156X","7178I","9263D","1690A","1484C",
+                    "2870","C449C","5783","0016A","3260B","8416","2422","9434"]
+# idema_estaciones = ["C649I"]
 anio_actual = 2008
 pos_estacion = 0
 while pos_estacion < len(idema_estaciones):
@@ -73,7 +77,7 @@ while pos_estacion < len(idema_estaciones):
         try:
             nuevosDatos = getDatos(str(anio_actual), idema_estaciones[pos_estacion])
             datos = pd.concat([datos, nuevosDatos], ignore_index=True)
-            print(datos)
+            print(nuevosDatos)
         except TooManyRequestException as error:
             print("TooManyRequest: Minuto de penalizacion AEMET")
             time.sleep(60)
@@ -88,4 +92,5 @@ while pos_estacion < len(idema_estaciones):
     anio_actual = 2008
     pos_estacion = pos_estacion + 1
 
-datos.to_csv('prueba.csv')
+#datos_poblacion = pd.read_csv("PoblacionFormateada.csv")
+datos.to_csv('prueba.csv', index=False)
